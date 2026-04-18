@@ -1,0 +1,123 @@
+rm(list = ls())
+
+source("functions_sltb_HC.R")
+
+# -----------------------------
+# Read data path and output path
+# -----------------------------
+args <- commandArgs(trailingOnly = TRUE)
+
+df_path <- if (length(args) >= 1) {
+  args[1]
+} else {
+  "/Users/kmg0122/Documents/Research/New_project/data/simulated_continuous_sim1000.csv"
+}
+
+out_dir <- if (length(args) >= 2) {
+  args[2]
+} else {
+  file.path(getwd(), "beta_laplace_output")
+}
+
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+# -----------------------------
+# Load simulated beta data
+# -----------------------------
+df <- read.csv(df_path, stringsAsFactors = FALSE)
+
+# Make grouping variable a factor
+df$id <- as.factor(df$id)
+
+# Re-create interaction terms after scaling
+df$x1_x2 <- df$x1 * df$x2
+df$x1_x3 <- df$x1 * df$x3
+
+# -----------------------------
+# BF: full marginal likelihood only
+# -----------------------------
+bf_logm <- setNames(rep(NA_real_, length(formula_list)), names(formula_list))
+
+for (nm in names(formula_list)) {
+  cat("BF -> running model:", nm, "\n")
+  fit <- do.call(
+    laplace_beta_mixed_common,
+    c(list(data = df, mean_formula = formula_list[[nm]], b = 1), shared_args)
+  )
+  bf_logm[nm] <- fit$log_marginal
+}
+
+bf_valid <- is.finite(bf_logm)
+if (!any(bf_valid)) stop("No valid BF fits produced.")
+
+bf_best <- max(bf_logm[bf_valid])
+bf_post <- rep(NA_real_, length(bf_logm))
+bf_post[bf_valid] <- exp(bf_logm[bf_valid] - bf_best)
+bf_post[bf_valid] <- bf_post[bf_valid] / sum(bf_post[bf_valid])
+
+bf_table <- data.frame(
+  model = names(bf_logm),
+  log_marginal = bf_logm,
+  post_prob = bf_post,
+  stringsAsFactors = FALSE
+)
+
+bf_table <- bf_table[order(-bf_table$post_prob), ]
+print(bf_table)
+
+# -----------------------------
+# Final best model and marginal summaries
+# -----------------------------
+best_name <- bf_table$model[1]
+best_formula <- formula_list[[best_name]]
+
+cat("Best model:", best_name, "\n")
+print(best_formula)
+
+best_model <- laplace_beta_mixed_common(
+  data = df,
+  mean_formula = best_formula,
+  prec_formula = ~ 1,
+  group_var = "id",
+  y_var = "y",
+  tau_scale = 6,
+  beta_var = 1e6,
+  gamma_var = 1e6,
+  tol = 1e-8,
+  max_iter = 500,
+  verbose = TRUE
+)
+
+X_best <- model.matrix(best_formula, data = df)
+Z_best <- model.matrix(~ 1, data = df)
+
+par_map <- best_model$lap_full$par_map
+tau_map <- best_model$lap_full$tau_map
+Sigma_full <- best_model$lap_full$Sigma_full
+
+names_par <- c(
+  paste0("beta_", colnames(X_best)),
+  paste0("gamma_", colnames(Z_best)),
+  paste0("u_", seq_len(nlevels(df$id)))
+)
+
+sd_vec <- if (!is.null(Sigma_full)) {
+  sqrt(pmax(0, diag(Sigma_full)))
+} else {
+  rep(NA_real_, length(c(par_map, tau_map)))
+}
+
+theta_hat <- data.frame(
+  name  = c(names_par, "tau"),
+  mean  = as.numeric(c(par_map, tau_map)),
+  sd    = as.numeric(sd_vec),
+  stringsAsFactors = FALSE
+)
+
+theta_hat$lower <- theta_hat$mean - 1.96 * theta_hat$sd
+theta_hat$upper <- theta_hat$mean + 1.96 * theta_hat$sd
+
+print(theta_hat)
+
+write.csv(bf_table, file.path(out_dir, "proper_Laplace_HCM_posterior_cont50.csv"), row.names = FALSE)
+write.csv(theta_hat, file.path(out_dir, "proper_Laplace_HCM_theta_cont50.csv"), row.names = FALSE)
