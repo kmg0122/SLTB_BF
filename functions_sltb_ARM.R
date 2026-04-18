@@ -1,10 +1,8 @@
 if (!requireNamespace("Matrix", quietly = TRUE)) install.packages("Matrix")
 if (!requireNamespace("MASS", quietly = TRUE)) install.packages("MASS")
-if (!requireNamespace("numDeriv", quietly = TRUE)) install.packages("numDeriv")
 
 library(Matrix)
 library(MASS)
-library(numDeriv)
 
 # ============================================================
 # Fixed SLT / SLTB constants
@@ -453,44 +451,107 @@ laplace_sltb_mixed_common_fast <- function(data,
       gamma_hat <- up$gamma
       u_hat <- up$u
 
-      stage <- "numeric hessian"
-      theta_map <- c(par_map, logtau_map)
+      stage <- "obs_quantities"
+      oq <- obs_quantities(beta_hat, gamma_hat, u_hat, y_local)
 
-      joint_neglogpost <- function(theta) {
-        parv <- theta[1:(p + q + G)]
-        logtauv <- theta[p + q + G + 1]
-        out <- logpost_and_grad_scaled(parv, logtauv, y_local, ll_scale = ll_scale)
-        -out$logpost
-      }
+      W_vec <- oq$W_beta * ll_scale
+      dotmu <- oq$dotmu
+      E_vec <- oq$E_beta * ll_scale
+      Bphi_vec <- oq$Bphi_beta * ll_scale
+      D_phi2_vec <- oq$D_phi2_beta * ll_scale
+      phi <- oq$phi
 
-      H_sym <- numDeriv::hessian(joint_neglogpost, theta_map)
-      H_sym <- (H_sym + t(H_sym)) / 2
+      stage <- "hessian pieces"
+      D_W <- Diagonal(x = as.numeric(W_vec))
+      D_E <- Diagonal(x = as.numeric(dotmu * phi * E_vec))
+      D_gamma_diag <- Diagonal(x = as.numeric(-phi^2 * D_phi2_vec - phi * Bphi_vec))
 
+      H_bb <- as.matrix(t(X) %*% D_W %*% X) + diag(1 / beta_var, p)
+      H_bg <- as.matrix(-t(X) %*% D_E %*% Z)
+      H_bu <- as.matrix(t(X) %*% D_W %*% M)
+
+      H_gb <- t(H_bg)
+      H_gg <- as.matrix(t(Z) %*% D_gamma_diag %*% Z) + diag(1 / gamma_var, q)
+      H_gu <- as.matrix(-t(Z) %*% D_E %*% M)
+
+      H_ub <- t(H_bu)
+      H_ug <- t(H_gu)
+
+      sumW_by_group <- as.numeric(t(M) %*% as.numeric(W_vec))
+      H_uu <- as.matrix(Diagonal(x = sumW_by_group) + Diagonal(x = rep(1 / tau_map, G)))
+
+      stage <- "tau hessian"
+      H_utau <- -(u_hat / tau_map)
+      H_tauu <- matrix(H_utau, nrow = 1)
+
+      c_tau <- tau_scale^2
+      H_tautau <- 0.5 * sum(u_hat^2) / tau_map + 2 * tau_map / ((tau_map + 2)^2)
+
+      stage <- "assemble H"
+      top_left <- cbind(H_bb, H_bg, H_bu)
+      mid_left <- cbind(H_gb, H_gg, H_gu)
+      bot_left <- cbind(H_ub, H_ug, H_uu)
+      H_no_tau <- rbind(top_left, mid_left, bot_left)
+
+      ntheta <- p + q + G
+      H_full <- matrix(0, nrow = ntheta + 1, ncol = ntheta + 1)
+      H_full[1:ntheta, 1:ntheta] <- H_no_tau
+
+      rows_u <- (p + q + 1):(p + q + G)
+      H_full[rows_u, ntheta + 1] <- H_utau
+      H_full[ntheta + 1, rows_u] <- H_tauu
+      H_full[ntheta + 1, ntheta + 1] <- H_tautau
+
+      stage <- "regularize H"
+      H_sym <- (H_full + t(H_full)) / 2
       ridge <- ridge_rel * max(1, mean(abs(diag(H_sym))))
       H_sym <- H_sym + diag(ridge, nrow(H_sym))
 
-      eig <- eigen(H_sym, symmetric = TRUE)
-      eig$values[eig$values < 1e-10] <- 1e-10
+      stage <- "invert H"
+      Sigma_full <- NULL
+      H_reg <- NULL
+      eig <- NULL
 
-      Sigma_full <- tryCatch(
-        solve(H_sym),
-        error = function(e) MASS::ginv(H_sym)
-      )
+      chol_ok <- TRUE
+      chol_try <- tryCatch({
+        R <- chol(H_sym)
+        Sigma_full <- chol2inv(R)
+        H_reg <- H_sym
+        NULL
+      }, error = function(e) e$message)
+
+      if (!is.null(chol_try)) chol_ok <- FALSE
+
+      if (!chol_ok) {
+        eig_try <- eigen(H_sym, symmetric = TRUE)
+        eig_vals <- eig_try$values
+        eig_vals[eig_vals < 1e-6] <- 1e-6
+        eig <- list(values = eig_vals, vectors = eig_try$vectors)
+        H_reg <- eig$vectors %*% diag(eig_vals) %*% t(eig$vectors)
+        Sigma_full <- tryCatch(solve(H_reg), error = function(e) MASS::ginv(H_reg))
+      } else {
+        eig <- eigen(H_sym, symmetric = TRUE)
+        eig$values[eig$values < 1e-12] <- 1e-12
+      }
+
+      if (is.null(H_reg)) stop("H_reg is NULL")
+      if (is.null(Sigma_full)) stop("Sigma_full is NULL")
 
       stage <- "Laplace integral"
       lp_out_scaled <- logpost_and_grad_scaled(par_map, logtau_map, y_local, ll_scale = ll_scale)
-      logpost_scaled_at_map <- lp_out_scaled$logpost
+      logpost_scaled_no_tau <- lp_out_scaled$logpost
+      log_numerical_at_map <- as.numeric(logpost_scaled_no_tau)
 
       logdet_H <- sum(log(eig$values))
-      k_full <- length(theta_map)
-      log_integral <- as.numeric(logpost_scaled_at_map + (k_full / 2) * log(2 * pi) - 0.5 * logdet_H)
+      k_full <- ntheta + 1
+      log_integral <- as.numeric(log_numerical_at_map + (k_full / 2) * log(2 * pi) - 0.5 * logdet_H)
 
       list(
         log_integral = log_integral,
         par_map = par_map,
         logtau_map = logtau_map,
         tau_map = tau_map,
-        H_reg = H_sym,
+        H_reg = H_reg,
         Sigma_full = Sigma_full,
         eig = eig,
         stage = "ok",
