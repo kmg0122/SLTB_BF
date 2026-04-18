@@ -119,5 +119,15 @@ theta_hat$upper <- theta_hat$mean + 1.96 * theta_hat$sd
 
 print(theta_hat)
 
-write.csv(bf_table, file.path(out_dir, "proper_Laplace_HCM_posterior_cont50.csv"), row.names = FALSE)
-write.csv(theta_hat, file.path(out_dir, "proper_Laplace_HCM_theta_cont50.csv"), row.names = FALSE)
+mc_summary_df <- do.call(rbind, mc_summary)
+selection_df <- do.call(rbind, selection_list)
+posterior_long_df <- do.call(rbind, posterior_long_list)
+
+write.csv(mc_summary_df, file.path(cond_dir, "mc_summary_condition.csv"), row.names = FALSE)
+write.csv(selection_df, file.path(cond_dir, "selection_condition.csv"), row.names = FALSE)
+write.csv(posterior_long_df, file.path(cond_dir, "posterior_long_condition.csv"), row.names = FALSE)
+
+saveRDS(mc_best_tables, file.path(cond_dir, "mc_best_tables_condition.rds"))
+saveRDS(mc_theta_tables, file.path(cond_dir, "mc_theta_tables_condition.rds"))
+
+cat("Done for n =", n, "tau =", tau_name, "\n")
