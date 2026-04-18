@@ -6,21 +6,24 @@ source("functions_sltb_HC.R")
 # Read data path and output path
 # -----------------------------
 args <- commandArgs(trailingOnly = TRUE)
-
-df_path <- if (length(args) >= 1) {
-  args[1]
-} else {
-  "/Users/kmg0122/Documents/Research/New_project/data/simulated_continuous_sim1000.csv"
+if (length(args) < 3) {
+  stop("Usage: Rscript run_one_condition.R n tau_name tau_sd")
 }
 
-out_dir <- if (length(args) >= 2) {
-  args[2]
-} else {
-  file.path(getwd(), "beta_laplace_output")
-}
+n <- as.integer(args[1])
+tau_name <- args[2]
+tau_sd <- as.numeric(args[3])
 
-dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+R <- 100
+true_model_name <- "int12_3"
 
+base_dir <- file.path(getwd(), "mc_100rep_SLTB_halfCauchy")
+dir.create(base_dir, showWarnings = FALSE, recursive = TRUE)
+
+cond_dir <- file.path(base_dir, paste0("n", n), tau_name)
+dir.create(cond_dir, showWarnings = FALSE, recursive = TRUE)
+
+set.seed(122)
 # -----------------------------
 # Load simulated beta data
 # -----------------------------
