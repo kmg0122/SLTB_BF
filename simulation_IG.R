@@ -29,7 +29,6 @@ mc_summary <- list()
 selection_list <- list()
 posterior_long_list <- list()
 mc_best_tables <- list()
-mc_theta_tables <- list()
 
 for (r in 1:R) {
   sim_seed <- 100000 + 1000 * n + 100 * match(tau_name, c("small", "medium", "big")) + r
@@ -87,62 +86,18 @@ for (r in 1:R) {
       best_name <- bf_table$model[1]
       best_formula <- formula_list[[best_name]]
       
-      best_model <- laplace_sltb_mixed_common_fast(
-        data = df,
-        mean_formula = best_formula,
-        prec_formula = ~ 1,
-        group_var = "id",
-        y_var = "y",
-        tau_scale = 6,
-        beta_var = 1e6,
-        gamma_var = 1e6,
-        tol = 1e-8,
-        max_iter = 500,
-        verbose = FALSE
-      )
-      
-      X_best <- model.matrix(best_formula, data = df)
-      Z_best <- model.matrix(~ 1, data = df)
-      
-      par_map <- best_model$lap_full$par_map
-      tau_map <- best_model$lap_full$tau_map
-      Sigma_full <- best_model$lap_full$Sigma_full
-      
-      names_par <- c(
-        paste0("beta_", colnames(X_best)),
-        paste0("gamma_", colnames(Z_best)),
-        paste0("u_", seq_len(nlevels(df$id)))
-      )
-      
-      sd_vec <- if (!is.null(Sigma_full)) {
-        sqrt(pmax(0, diag(Sigma_full)))
-      } else {
-        rep(NA_real_, length(par_map) + 1)
-      }
-      
-      theta_hat <- data.frame(
-        name  = c(names_par, "tau"),
-        mean  = as.numeric(c(par_map, tau_map)),
-        sd    = as.numeric(sd_vec),
-        stringsAsFactors = FALSE
-      )
-      theta_hat$lower <- theta_hat$mean - 1.96 * theta_hat$sd
-      theta_hat$upper <- theta_hat$mean + 1.96 * theta_hat$sd
-      
       list(
         bf_table = bf_table,
-        theta_hat = theta_hat,
         best_name = best_name,
         best_formula = deparse(best_formula),
-        log_marginal = best_model$log_marginal,
-        tau_map = tau_map,
+        log_marginal = bf_table$log_marginal[1],
+        tau_map = NA_real_,
         error = NA_character_
       )
     },
     error = function(e) {
       list(
         bf_table = NULL,
-        theta_hat = NULL,
         best_name = NA_character_,
         best_formula = NA_character_,
         log_marginal = NA_real_,
@@ -155,12 +110,6 @@ for (r in 1:R) {
   if (!is.null(res$bf_table)) {
     write.csv(res$bf_table,
               file.path(cond_dir, sprintf("bf_table_n%d_%s_rep%03d.csv", n, tau_name, r)),
-              row.names = FALSE)
-  }
-  
-  if (!is.null(res$theta_hat)) {
-    write.csv(res$theta_hat,
-              file.path(cond_dir, sprintf("theta_hat_n%d_%s_rep%03d.csv", n, tau_name, r)),
               row.names = FALSE)
   }
   
@@ -222,7 +171,6 @@ for (r in 1:R) {
   }
   
   mc_best_tables[[as.character(r)]] <- res$bf_table
-  mc_theta_tables[[as.character(r)]] <- res$theta_hat
 }
 
 mc_summary_df <- do.call(rbind, mc_summary)
@@ -234,6 +182,5 @@ write.csv(selection_df, file.path(cond_dir, "selection_condition.csv"), row.name
 write.csv(posterior_long_df, file.path(cond_dir, "posterior_long_condition.csv"), row.names = FALSE)
 
 saveRDS(mc_best_tables, file.path(cond_dir, "mc_best_tables_condition.rds"))
-saveRDS(mc_theta_tables, file.path(cond_dir, "mc_theta_tables_condition.rds"))
 
 cat("Done for n =", n, "tau =", tau_name, "\n")
