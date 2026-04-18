@@ -425,6 +425,77 @@ laplace_beta_mixed_common <- function(data,
 }
 
 # ============================================================
+# Simulation:
+#   simulate from Beta, then inflate boundaries:
+#     y = 0 if y* < 0.01
+#     y = 1 if y* > 0.99
+# ============================================================
+simulate_sltb_data <- function(n, G = max(5, round(n / 10)), seed = NULL,
+                               beta0 = -0.5,
+                               beta1 = 0.8, beta2 = -0.6, beta3 = 0.5, beta4 = 0,
+                               beta12 = 0.4, beta13 = 0,
+                               tau_sd = sqrt(0.20), phi = 10) {
+  if (!is.null(seed)) set.seed(seed)
+  
+  x1 <- rnorm(n, mean = 0, sd = 1)
+  x2 <- 0.5 * x1 + rnorm(n, mean = 0, sd = 1)
+  x3 <- runif(n, -1, 1)
+  x4 <- rnorm(n, mean = 2, sd = 0.5)
+  
+  x1_x2 <- x1 * x2
+  x1_x3 <- x1 * x3
+  
+  id <- sample(1:G, size = n, replace = TRUE)
+  
+  alpha_vec <- rnorm(G, mean = 0, sd = tau_sd)
+  names(alpha_vec) <- 1:G
+  u_obs <- alpha_vec[as.character(id)]
+  
+  eta <- beta0 +
+    beta1 * x1 +
+    beta2 * x2 +
+    beta3 * x3 +
+    beta4 * x4 +
+    beta12 * x1_x2 +
+    beta13 * x1_x3 +
+    u_obs
+  
+  mu <- plogis(eta)
+  a <- mu * phi
+  b <- (1 - mu) * phi
+  
+  y_cont <- rbeta(n = n, shape1 = a, shape2 = b)
+  y <- ifelse(y_cont < 0.01, 0,
+              ifelse(y_cont > 0.99, 1, y_cont))
+  
+  df <- data.frame(
+    y = y,
+    x1 = x1,
+    x2 = x2,
+    x3 = x3,
+    x4 = x4,
+    x1_x2 = x1_x2,
+    x1_x3 = x1_x3,
+    id = id,
+    eta = eta,
+    mu = mu,
+    u = u_obs
+  )
+  
+  alpha_df <- data.frame(
+    id = 1:G,
+    alpha_true = as.numeric(alpha_vec)
+  )
+  
+  list(
+    data = df,
+    alpha_true = alpha_df,
+    alpha_vec = alpha_vec
+  )
+}
+
+                           
+# ============================================================
 # Model formulas
 # ============================================================
 formula_list <- list(
