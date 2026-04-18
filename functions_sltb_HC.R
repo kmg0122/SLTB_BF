@@ -5,57 +5,172 @@ library(Matrix)
 library(MASS)
 
 # ============================================================
-# Shared Laplace engine
-#   - half-Cauchy prior on tau
-#   - diffuse Normal(0, variance) priors on beta and gamma
+# Fixed SLT / SLTB constants
 # ============================================================
-laplace_beta_mixed_common <- function(data,
-                                      mean_formula = ~ x1 * x2 + x3 + x4,
-                                      prec_formula = ~ 1,
-                                      group_var = "id",
-                                      y_var = "y",
-                                      tau_scale = 6,
-                                      b = NULL,
-                                      beta_var = 1e6,
-                                      gamma_var = 1e6,
-                                      control_optim = list(maxit = 2000, reltol = 1e-10),
-                                      tol = 1e-6,
-                                      max_iter = 1000,
-                                      verbose = FALSE,
-                                      ridge_rel = 1e-8) {
+s_fixed <- 1 + 10^(-8.5)
+l_fixed <- 1e-9
 
-  fail_result <- function(msg) {
-    if (verbose) message("laplace_beta_mixed_common failure: ", msg)
-    list(
-      log_marginal = NA_real_,
-      log_Cb = NA_real_,
-      b = b,
-      error = msg,
-      lap_full = list(stage = NA_character_, err = msg),
-      lap_b = list(stage = NA_character_, err = msg),
-      p = NA_integer_,
-      q = NA_integer_,
-      G = NA_integer_
-    )
-  }
+safe_mu <- function(x) pmin(pmax(x, 1e-8), 1 - 1e-8)
+safe_phi <- function(x) pmax(x, 1e-8)
+safe_z <- function(z) pmin(pmax(z, 1e-12), 1 - 1e-12)
 
-  if (!is.data.frame(data)) return(fail_result("data must be a data.frame"))
-  if (!(group_var %in% names(data))) return(fail_result(paste0("group_var '", group_var, "' not found")))
-  if (!(y_var %in% names(data))) return(fail_result(paste0("y_var '", y_var, "' not found")))
+# ============================================================
+# Failure helper
+# ============================================================
+fail_result <- function(msg, b = NA_real_, verbose = FALSE) {
+  if (verbose) message("laplace_sltb_mixed_common_fast failure: ", msg)
+  list(
+    log_marginal = NA_real_,
+    log_Cb = NA_real_,
+    b = b,
+    error = msg,
+    lap_full = list(stage = NA_character_, err = msg),
+    lap_b = list(stage = NA_character_, err = msg),
+    p = NA_integer_,
+    q = NA_integer_,
+    G = NA_integer_
+  )
+}
+
+# ============================================================
+# SLTB helper functions
+# ============================================================
+sltb_logC <- function(mu, phi, s = s_fixed, l = l_fixed) {
+  mu <- safe_mu(mu)
+  phi <- safe_phi(phi)
+  a <- mu * phi
+  b <- (1 - mu) * phi
+
+  zL <- l
+  zU <- l + 1 / s
+
+  C <- pbeta(zU, shape1 = a, shape2 = b) - pbeta(zL, shape1 = a, shape2 = b)
+  log(pmax(C, .Machine$double.xmin))
+}
+
+sltb_dlogC <- function(mu, phi, s = s_fixed, l = l_fixed,
+                       eps_mu = 1e-6, eps_phi = 1e-6) {
+  mu <- safe_mu(mu)
+  phi <- safe_phi(phi)
+
+  mu_p <- safe_mu(mu + eps_mu)
+  mu_m <- safe_mu(mu - eps_mu)
+  phi_p <- safe_phi(phi + eps_phi)
+  phi_m <- safe_phi(phi - eps_phi)
+
+  dmu <- (sltb_logC(mu_p, phi, s, l) - sltb_logC(mu_m, phi, s, l)) / (mu_p - mu_m)
+  dphi <- (sltb_logC(mu, phi_p, s, l) - sltb_logC(mu, phi_m, s, l)) / (phi_p - phi_m)
+
+  c(dmu = as.numeric(dmu), dphi = as.numeric(dphi))
+}
+
+# ============================================================
+# Simulation
+# ============================================================
+simulate_sltb_data <- function(n, G = max(5, round(n / 10)), seed = NULL,
+                               beta0 = -0.5,
+                               beta1 = 0.8, beta2 = -0.6, beta3 = 0.5, beta4 = 0,
+                               beta12 = 0.4, beta13 = 0,
+                               tau_sd = sqrt(0.20), phi = 10) {
+  if (!is.null(seed)) set.seed(seed)
+
+  x1 <- rnorm(n, mean = 0, sd = 1)
+  x2 <- 0.5 * x1 + rnorm(n, mean = 0, sd = 1)
+  x3 <- runif(n, -1, 1)
+  x4 <- rnorm(n, mean = 2, sd = 0.5)
+
+  x1_x2 <- x1 * x2
+  x1_x3 <- x1 * x3
+
+  id <- sample(1:G, size = n, replace = TRUE)
+
+  alpha_vec <- rnorm(G, mean = 0, sd = tau_sd)
+  names(alpha_vec) <- 1:G
+  u_obs <- alpha_vec[as.character(id)]
+
+  eta <- beta0 +
+    beta1 * x1 +
+    beta2 * x2 +
+    beta3 * x3 +
+    beta4 * x4 +
+    beta12 * x1_x2 +
+    beta13 * x1_x3 +
+    u_obs
+
+  mu <- plogis(eta)
+  a <- mu * phi
+  b <- (1 - mu) * phi
+
+  y_cont <- rbeta(n = n, shape1 = a, shape2 = b)
+  y <- ifelse(y_cont < 0.01, 0,
+              ifelse(y_cont > 0.99, 1, y_cont))
+
+  df <- data.frame(
+    y = y,
+    x1 = x1,
+    x2 = x2,
+    x3 = x3,
+    x4 = x4,
+    x1_x2 = x1_x2,
+    x1_x3 = x1_x3,
+    id = id,
+    eta = eta,
+    mu = mu,
+    u = u_obs
+  )
+
+  alpha_df <- data.frame(
+    id = 1:G,
+    alpha_true = as.numeric(alpha_vec)
+  )
+
+  list(
+    data = df,
+    alpha_true = alpha_df,
+    alpha_vec = alpha_vec
+  )
+}
+
+# ============================================================
+# Shared Laplace engine
+# Priors:
+#   beta  : Normal(0, beta_var)
+#   gamma : Normal(0, gamma_var)
+#   u | tau : Normal(0, tau I)
+#   tau   : half-Cauchy(scale = tau_scale)
+# ============================================================
+laplace_sltb_mixed_common_fast <- function(data,
+                                           mean_formula = ~ x1 * x2 + x3 + x4,
+                                           prec_formula = ~ 1,
+                                           group_var = "id",
+                                           y_var = "y",
+                                           tau_scale = 6,
+                                           b = 1,
+                                           beta_var = 1e6,
+                                           gamma_var = 1e6,
+                                           control_optim = list(maxit = 2000, reltol = 1e-10),
+                                           tol = 1e-6,
+                                           max_iter = 1000,
+                                           verbose = FALSE,
+                                           ridge_rel = 1e-8) {
+  if (!is.data.frame(data)) return(fail_result("data must be a data.frame", b = b, verbose = verbose))
+  if (!(group_var %in% names(data))) return(fail_result(paste0("group_var '", group_var, "' not found"), b = b, verbose = verbose))
+  if (!(y_var %in% names(data))) return(fail_result(paste0("y_var '", y_var, "' not found"), b = b, verbose = verbose))
 
   y <- data[[y_var]]
-  if (!is.numeric(y)) return(fail_result("y must be numeric"))
-  if (any(!is.finite(y), na.rm = TRUE)) return(fail_result("y contains non-finite values"))
+  if (!is.numeric(y)) return(fail_result("y must be numeric", b = b, verbose = verbose))
+  if (any(!is.finite(y), na.rm = TRUE)) return(fail_result("y contains non-finite values", b = b, verbose = verbose))
+  if (any(y < 0 | y > 1, na.rm = TRUE)) return(fail_result("y must lie in [0, 1]", b = b, verbose = verbose))
 
   X <- tryCatch(
     model.matrix(mean_formula, data),
-    error = function(e) return(fail_result(paste0("mean_formula error: ", e$message)))
+    error = function(e) return(fail_result(paste0("mean_formula error: ", e$message), b = b, verbose = verbose))
   )
   if (is.list(X) && !is.matrix(X)) return(X)
 
   Z <- tryCatch(
     model.matrix(prec_formula, data),
-    error = function(e) return(fail_result(paste0("prec_formula error: ", e$message)))
+    error = function(e) return(fail_result(paste0("prec_formula error: ", e$message), b = b, verbose = verbose))
   )
   if (is.list(Z) && !is.matrix(Z)) return(Z)
 
@@ -63,18 +178,16 @@ laplace_beta_mixed_common <- function(data,
   grp_idx <- as.integer(grp)
   G <- nlevels(grp)
   N <- nrow(X)
-  if (length(y) != N) return(fail_result("y and design matrix rows mismatch"))
+  if (length(y) != N) return(fail_result("y and design matrix rows mismatch", b = b, verbose = verbose))
 
   M <- sparseMatrix(i = seq_len(N), j = grp_idx, x = 1L, dims = c(N, G))
 
   p <- ncol(X)
   q <- ncol(Z)
 
-  if (is.null(b)) {
-    b <- (p + 1) / N
-  }
+  if (is.null(b)) b <- (p + 1) / N
   if (!is.finite(b) || b <= 0 || b > 1) {
-    return(fail_result("b must be in (0,1]"))
+    return(fail_result("b must be in (0,1]", b = b, verbose = verbose))
   }
 
   unpack_params <- function(par) {
@@ -83,6 +196,11 @@ laplace_beta_mixed_common <- function(data,
     gamma <- par[i:(i + q - 1)]; i <- i + q
     u <- par[i:(i + G - 1)]
     list(beta = beta, gamma = gamma, u = u)
+  }
+
+  logpi_tau_halfcauchy <- function(tau, s_tau) {
+    if (tau <= 0) return(-Inf)
+    -0.5 * log(tau) - log1p(tau / (s_tau^2))
   }
 
   obs_quantities <- function(beta, gamma, u, y_local) {
@@ -94,7 +212,7 @@ laplace_beta_mixed_common <- function(data,
     delt <- as.numeric(Z %*% gamma)
     phi <- exp(delt)
 
-    y_safe <- y_local
+    z <- safe_z(y_local / s_fixed + l_fixed)
     a <- mu * phi
     bpar <- (1 - mu) * phi
 
@@ -106,19 +224,41 @@ laplace_beta_mixed_common <- function(data,
     tri_b <- trigamma(bpar)
     tri_phi <- trigamma(phi)
 
-    S <- -dig_a + dig_b + log(y_safe / (1 - y_safe))
-    A <- phi * S
-    C <- -phi^2 * (tri_a + tri_b)
+    S_beta <- -dig_a + dig_b + log(z) - log1p(-z)
+    A_beta <- phi * S_beta
+    C_beta <- -phi^2 * (tri_a + tri_b)
 
-    Bphi <- dig_phi - mu * dig_a - (1 - mu) * dig_b +
-      mu * log(y_safe) + (1 - mu) * log1p(-y_safe)
+    Bphi_beta <- dig_phi - mu * dig_a - (1 - mu) * dig_b +
+      mu * log(z) + (1 - mu) * log1p(-z)
 
-    D_phi2 <- tri_phi - mu^2 * tri_a - (1 - mu)^2 * tri_b
-    E <- S + phi * (-mu * tri_a + (1 - mu) * tri_b)
-    W <- -(C * (dotmu^2) + A * ddotmu)
+    D_phi2_beta <- tri_phi - mu^2 * tri_a - (1 - mu)^2 * tri_b
+    E_beta <- S_beta + phi * (-mu * tri_a + (1 - mu) * tri_b)
+    W_beta <- -(C_beta * (dotmu^2) + A_beta * ddotmu)
 
-    list(mu = mu, phi = phi, A = A, Bphi = Bphi, C = C,
-         D_phi2 = D_phi2, E = E, W = W, dotmu = dotmu)
+    dC <- t(vapply(
+      seq_along(mu),
+      function(i) sltb_dlogC(mu[i], phi[i], s = s_fixed, l = l_fixed),
+      numeric(2)
+    ))
+    colnames(dC) <- c("dmu", "dphi")
+
+    score_mu <- A_beta - dC[, "dmu"]
+    score_phi <- Bphi_beta - dC[, "dphi"]
+
+    list(
+      mu = mu,
+      phi = phi,
+      z = z,
+      score_mu = score_mu,
+      score_phi = score_phi,
+      dotmu = dotmu,
+      A_beta = A_beta,
+      Bphi_beta = Bphi_beta,
+      C_beta = C_beta,
+      D_phi2_beta = D_phi2_beta,
+      E_beta = E_beta,
+      W_beta = W_beta
+    )
   }
 
   logpost_and_grad_scaled <- function(par, tau, y_local, ll_scale = 1) {
@@ -130,34 +270,42 @@ laplace_beta_mixed_common <- function(data,
     oq <- obs_quantities(beta, gamma, u, y_local)
     mu <- oq$mu
     phi <- oq$phi
-    A <- oq$A
-    Bphi <- oq$Bphi
+    z <- oq$z
+    score_mu <- oq$score_mu
+    score_phi <- oq$score_phi
     dotmu <- oq$dotmu
-    y_safe <- y_local
 
     a <- mu * phi
     bpar <- (1 - mu) * phi
 
+    logC <- mapply(
+      FUN = sltb_logC,
+      mu = mu,
+      phi = phi,
+      MoreArgs = list(s = s_fixed, l = l_fixed)
+    )
+
     ll_terms <- sum(
       lgamma(phi) - lgamma(a) - lgamma(bpar) +
-        (a - 1) * log(y_safe) +
-        (bpar - 1) * log1p(-y_safe)
-    )
+        (a - 1) * log(z) +
+        (bpar - 1) * log1p(-z) -
+        logC
+    ) - length(y_local) * log(s_fixed)
 
     if (!is.finite(ll_terms)) {
       return(list(logpost = -Inf, grad = rep(NA_real_, p + q + G), oq = oq))
     }
 
-    lp_u <- -0.5 * sum(u^2) / tau - (G / 2) * log(tau)
     lp_beta <- -0.5 * sum(beta^2) / beta_var - 0.5 * p * log(2 * pi * beta_var)
     lp_gamma <- -0.5 * sum(gamma^2) / gamma_var - 0.5 * q * log(2 * pi * gamma_var)
+    lp_u <- -0.5 * sum(u^2) / tau - (G / 2) * log(tau)
 
-    logpost <- as.numeric(ll_scale * ll_terms + lp_u + lp_beta + lp_gamma)
+    logpost <- as.numeric(ll_scale * ll_terms + lp_beta + lp_gamma + lp_u)
 
-    g_beta <- as.numeric(t(X) %*% (ll_scale * (A * dotmu))) - beta / beta_var
-    g_gamma <- as.numeric(t(Z) %*% (ll_scale * (phi * Bphi))) - gamma / gamma_var
+    g_beta <- as.numeric(t(X) %*% (ll_scale * (score_mu * dotmu))) - beta / beta_var
+    g_gamma <- as.numeric(t(Z) %*% (ll_scale * (score_phi * phi))) - gamma / gamma_var
 
-    obs_grad_u <- ll_scale * (A * dotmu)
+    obs_grad_u <- ll_scale * (score_mu * dotmu)
     g_u <- numeric(G)
     for (gidx in seq_len(G)) {
       g_u[gidx] <- sum(obs_grad_u[grp_idx == gidx]) - u[gidx] / tau
@@ -167,16 +315,11 @@ laplace_beta_mixed_common <- function(data,
     list(logpost = logpost, grad = grad, oq = oq)
   }
 
-  logpi_tau_halfcauchy <- function(tau, s_tau) {
-    if (tau <= 0) return(-Inf)
-    -0.5 * log(tau) - log1p(tau / (s_tau^2))
-  }
-
   update_tau_map_numeric <- function(u_vec, s_tau, tau_lower = 1e-12, tau_upper = 1e8) {
     f_neg <- function(tau_val) {
       if (!is.finite(tau_val) || tau_val <= 0) return(1e100)
       lp_tau <- logpi_tau_halfcauchy(tau_val, s_tau)
-      lp_u <- -0.5 * sum(u_vec^2) / tau_val - (G / 2) * log(tau_val)
+      lp_u <- -0.5 * sum(u_vec^2) / tau_val - (length(u_vec) / 2) * log(tau_val)
       -(lp_tau + lp_u)
     }
 
@@ -205,7 +348,7 @@ laplace_beta_mixed_common <- function(data,
 
     u0_by_grp <- tapply(y_local, grp, function(v) {
       mv <- mean(v)
-      qlogis(mv)
+      qlogis(safe_mu(mv))
     })
     if (length(u0_by_grp) == G && all(is.finite(u0_by_grp))) {
       par0[(p + q + 1):(p + q + G)] <- as.numeric(u0_by_grp) - mean(as.numeric(u0_by_grp))
@@ -270,6 +413,11 @@ laplace_beta_mixed_common <- function(data,
       }
     }
 
+    if (!convergedloc && verbose) {
+      warning("Alternation (ll_scale = ", ll_scale, ") did not fully converge within max_iter. last_err = ",
+              ifelse(is.null(last_err), "none", last_err))
+    }
+
     list(par = par, tau = tau, iter = iterloc, converged = convergedloc, err = last_err)
   }
 
@@ -279,6 +427,9 @@ laplace_beta_mixed_common <- function(data,
     tryCatch({
       stage <- "MAP"
       mp <- find_map_scaled(y_local, ll_scale = ll_scale)
+      if (!mp$converged && verbose) {
+        warning("MAP did not converge for ll_scale = ", ll_scale, "; proceeding anyway.")
+      }
 
       par_map <- mp$par
       tau_map <- mp$tau
@@ -293,11 +444,11 @@ laplace_beta_mixed_common <- function(data,
       stage <- "obs_quantities"
       oq <- obs_quantities(beta_hat, gamma_hat, u_hat, y_local)
 
-      W_vec <- oq$W * ll_scale
+      W_vec <- oq$W_beta * ll_scale
       dotmu <- oq$dotmu
-      E_vec <- oq$E * ll_scale
-      Bphi_vec <- oq$Bphi * ll_scale
-      D_phi2_vec <- oq$D_phi2 * ll_scale
+      E_vec <- oq$E_beta * ll_scale
+      Bphi_vec <- oq$Bphi_beta * ll_scale
+      D_phi2_vec <- oq$D_phi2_beta * ll_scale
       phi <- oq$phi
 
       stage <- "hessian pieces"
@@ -352,12 +503,14 @@ laplace_beta_mixed_common <- function(data,
 
       stage <- "invert H"
       Sigma_full <- NULL
+      H_reg <- NULL
       eig <- NULL
 
       chol_ok <- TRUE
       chol_try <- tryCatch({
         R <- chol(H_sym)
         Sigma_full <- chol2inv(R)
+        H_reg <- H_sym
         NULL
       }, error = function(e) e$message)
 
@@ -373,13 +526,15 @@ laplace_beta_mixed_common <- function(data,
       } else {
         eig <- eigen(H_sym, symmetric = TRUE)
         eig$values[eig$values < 1e-12] <- 1e-12
-        H_reg <- H_sym
       }
+
+      if (is.null(H_reg)) stop("H_reg is NULL")
+      if (is.null(Sigma_full)) stop("Sigma_full is NULL")
 
       stage <- "Laplace integral"
       lp_out_scaled <- logpost_and_grad_scaled(par_map, tau_map, y_local, ll_scale = ll_scale)
       logpost_scaled_no_tau <- lp_out_scaled$logpost
-      logpi_tau_map <- logpi_tau_halfcauchy(tau_hat, tau_scale)
+      logpi_tau_map <- logpi_tau_halfcauchy(tau_map, tau_scale)
       log_numerical_at_map <- as.numeric(logpost_scaled_no_tau + logpi_tau_map)
 
       logdet_H <- sum(log(eig$values))
@@ -425,119 +580,43 @@ laplace_beta_mixed_common <- function(data,
     lap_b = lap_b,
     p = p, q = q, G = G
   )
-  class(res) <- "laplace_beta_mixed_common"
+  class(res) <- "laplace_sltb_mixed_common_fast"
   res
-}
-
-# ============================================================
-# Simulation:
-#   simulate from Beta, then inflate boundaries:
-#     y = 0 if y* < 0.01
-#     y = 1 if y* > 0.99
-# ============================================================
-simulate_sltb_data <- function(n, G = max(5, round(n / 10)), seed = NULL,
-                               beta0 = -0.5,
-                               beta1 = 0.8, beta2 = -0.6, beta3 = 0.5, beta4 = 0,
-                               beta12 = 0.4, beta13 = 0,
-                               tau_sd = sqrt(0.20), phi = 10) {
-  if (!is.null(seed)) set.seed(seed)
-  
-  x1 <- rnorm(n, mean = 0, sd = 1)
-  x2 <- 0.5 * x1 + rnorm(n, mean = 0, sd = 1)
-  x3 <- runif(n, -1, 1)
-  x4 <- rnorm(n, mean = 2, sd = 0.5)
-  
-  x1_x2 <- x1 * x2
-  x1_x3 <- x1 * x3
-  
-  id <- sample(1:G, size = n, replace = TRUE)
-  
-  alpha_vec <- rnorm(G, mean = 0, sd = tau_sd)
-  names(alpha_vec) <- 1:G
-  u_obs <- alpha_vec[as.character(id)]
-  
-  eta <- beta0 +
-    beta1 * x1 +
-    beta2 * x2 +
-    beta3 * x3 +
-    beta4 * x4 +
-    beta12 * x1_x2 +
-    beta13 * x1_x3 +
-    u_obs
-  
-  mu <- plogis(eta)
-  a <- mu * phi
-  b <- (1 - mu) * phi
-  
-  y_cont <- rbeta(n = n, shape1 = a, shape2 = b)
-  y <- ifelse(y_cont < 0.01, 0,
-              ifelse(y_cont > 0.99, 1, y_cont))
-  
-  df <- data.frame(
-    y = y,
-    x1 = x1,
-    x2 = x2,
-    x3 = x3,
-    x4 = x4,
-    x1_x2 = x1_x2,
-    x1_x3 = x1_x3,
-    id = id,
-    eta = eta,
-    mu = mu,
-    u = u_obs
-  )
-  
-  alpha_df <- data.frame(
-    id = 1:G,
-    alpha_true = as.numeric(alpha_vec)
-  )
-  
-  list(
-    data = df,
-    alpha_true = alpha_df,
-    alpha_vec = alpha_vec
-  )
 }
 
 # ============================================================
 # Model formulas
 # ============================================================
 formula_list <- list(
-  null   = as.formula("~ 1"),
-
-  x1     = as.formula("~ x1"),
-  x2     = as.formula("~ x2"),
-  x3     = as.formula("~ x3"),
-  x4     = as.formula("~ x4"),
-
-  main   = as.formula("~ x1 + x2 + x3 + x4"),
-
-  int12_3 = as.formula("~ x1 * x2 + x3"),
-  int12_4 = as.formula("~ x1 * x2 + x4"),
-  int13_2 = as.formula("~ x1 * x3 + x2"),
-  int13_4 = as.formula("~ x1 * x3 + x4"),
-  int14_2 = as.formula("~ x1 * x4 + x2"),
-  int14_3 = as.formula("~ x1 * x4 + x3"),
-  int23_1 = as.formula("~ x2 * x3 + x1"),
-  int23_4 = as.formula("~ x2 * x3 + x4"),
-  int24_1 = as.formula("~ x2 * x4 + x1"),
-  int24_3 = as.formula("~ x2 * x4 + x3"),
-  int34_1 = as.formula("~ x3 * x4 + x1"),
-  int34_2 = as.formula("~ x3 * x4 + x2"),
-
-  int12   = as.formula("~ x1 * x2 + x3 + x4"),
-  int13   = as.formula("~ x1 * x3 + x2 + x4"),
-  int14   = as.formula("~ x1 * x4 + x2 + x3"),
-  int23   = as.formula("~ x2 * x3 + x1 + x4"),
-  int24   = as.formula("~ x2 * x4 + x1 + x3"),
-  int34   = as.formula("~ x3 * x4 + x1 + x2"),
-
-  int123_4 = as.formula("~ x1 * x2 * x3 + x4"),
-  int124_3 = as.formula("~ x1 * x2 * x4 + x3"),
-  int134_2 = as.formula("~ x1 * x3 * x4 + x2"),
-  int234_1 = as.formula("~ x2 * x3 * x4 + x1"),
-
-  full   = as.formula("~ x1 * x2 * x3 * x4")
+  null       = as.formula("~ 1"),
+  x1         = as.formula("~ x1"),
+  x2         = as.formula("~ x2"),
+  x3         = as.formula("~ x3"),
+  x4         = as.formula("~ x4"),
+  main       = as.formula("~ x1 + x2 + x3 + x4"),
+  int12_3    = as.formula("~ x1 * x2 + x3"),
+  int12_4    = as.formula("~ x1 * x2 + x4"),
+  int13_2    = as.formula("~ x1 * x3 + x2"),
+  int13_4    = as.formula("~ x1 * x3 + x4"),
+  int14_2    = as.formula("~ x1 * x4 + x2"),
+  int14_3    = as.formula("~ x1 * x4 + x3"),
+  int23_1    = as.formula("~ x2 * x3 + x1"),
+  int23_4    = as.formula("~ x2 * x3 + x4"),
+  int24_1    = as.formula("~ x2 * x4 + x1"),
+  int24_3    = as.formula("~ x2 * x4 + x3"),
+  int34_1    = as.formula("~ x3 * x4 + x1"),
+  int34_2    = as.formula("~ x3 * x4 + x2"),
+  int12      = as.formula("~ x1 * x2 + x3 + x4"),
+  int13      = as.formula("~ x1 * x3 + x2 + x4"),
+  int14      = as.formula("~ x1 * x4 + x2 + x3"),
+  int23      = as.formula("~ x2 * x3 + x1 + x4"),
+  int24      = as.formula("~ x2 * x4 + x1 + x3"),
+  int34      = as.formula("~ x3 * x4 + x1 + x2"),
+  int123_4   = as.formula("~ x1 * x2 * x3 + x4"),
+  int124_3   = as.formula("~ x1 * x2 * x4 + x3"),
+  int134_2   = as.formula("~ x1 * x3 * x4 + x2"),
+  int234_1   = as.formula("~ x2 * x3 * x4 + x1"),
+  full       = as.formula("~ x1 * x2 * x3 * x4")
 )
 
 shared_args <- list(
