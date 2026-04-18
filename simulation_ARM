@@ -17,7 +17,7 @@ tau_sd <- as.numeric(args[3])
 R <- 100
 true_model_name <- "int12_3"
 
-base_dir <- file.path(getwd(), "mc_100rep_SLTB_halfCauchy")
+base_dir <- file.path(getwd(), "mc_100rep_SLTB_ARM")
 dir.create(base_dir, showWarnings = FALSE, recursive = TRUE)
 
 cond_dir <- file.path(base_dir, paste0("n", n), tau_name)
