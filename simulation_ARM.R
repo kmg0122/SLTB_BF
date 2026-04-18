@@ -14,7 +14,7 @@ n <- as.integer(args[1])
 tau_name <- args[2]
 tau_sd <- as.numeric(args[3])
 
-R <- 100
+R <- 50
 true_model_name <- "int12_3"
 
 base_dir <- file.path(getwd(), "mc_100rep_SLTB_ARM")
