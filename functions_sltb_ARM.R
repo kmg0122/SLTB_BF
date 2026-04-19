@@ -144,7 +144,7 @@ list(
   alpha_true = alpha_df,
   alpha_vec = alpha_vec
 )
-
+}
 
 # ============================================================
 # Shared Laplace engine

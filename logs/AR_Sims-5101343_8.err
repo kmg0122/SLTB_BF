@@ -1,0 +1,7 @@
+Setting R_LIBS_USER to: /home/kmg0122/R/tinkercliffs-rome/4.5.2
+Error in source("functions_sltb_ARM.R") : 
+  functions_sltb_ARM.R:645:0: unexpected end of input
+643:   verbose = FALSE
+644: )
+    ^
+Execution halted
