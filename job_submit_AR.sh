@@ -2,7 +2,7 @@
 #SBATCH -J AR_Sims
 #SBATCH -A slt_bf_simulation
 #SBATCH -p normal_q
-#SBATCH -t 0-01:00:00
+#SBATCH -t 5-00:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
