@@ -89,57 +89,62 @@ simulate_sltb_data <- function(n, G = max(5, round(n / 10)), seed = NULL,
   names(alpha_vec) <- 1:G
   u_obs <- alpha_vec[as.character(id)]
 
-  eta <- beta0 +
-    beta1 * x1 +
-    beta2 * x2 +
-    beta3 * x3 +
-    beta4 * x4 +
-    beta12 * x1_x2 +
-    beta13 * x1_x3 +
-    u_obs
+x1 <- rnorm(n, mean = 0, sd = 1)
+x2 <- 0.5 * x1 + rnorm(n, mean = 0, sd = 1)
+x3 <- runif(n, -1, 1)
+x4 <- rnorm(n, mean = 2, sd = 0.5)
 
-  mu <- plogis(eta)
-  a <- mu * phi
-  b <- (1 - mu) * phi
+x1_x2 <- x1 * x2
+x1_x3 <- x1 * x3
 
-  zL <- l
-  zU <- l + 1 / s
+id <- sample(1:G, size = n, replace = TRUE)
 
-  pL <- pbeta(zL, shape1 = a, shape2 = b)
-  pU <- pbeta(zU, shape1 = a, shape2 = b)
-  pU <- pmax(pU, pL + .Machine$double.eps)
+alpha_vec <- rnorm(G, mean = 0, sd = tau_sd)
+names(alpha_vec) <- 1:G
+u_obs <- alpha_vec[as.character(id)]
 
-  u <- runif(n, min = pL, max = pU)
-  z <- qbeta(u, shape1 = a, shape2 = b)
+eta <- beta0 +
+  beta1 * x1 +
+  beta2 * x2 +
+  beta3 * x3 +
+  beta4 * x4 +
+  beta12 * x1_x2 +
+  beta13 * x1_x3 +
+  u_obs
 
-  y <- s * (z - l)
-  y <- safe_z(y)
+mu <- plogis(eta)
+a <- mu * phi
+b <- (1 - mu) * phi
 
-  df <- data.frame(
-    y = y,
-    x1 = x1,
-    x2 = x2,
-    x3 = x3,
-    x4 = x4,
-    x1_x2 = x1_x2,
-    x1_x3 = x1_x3,
-    id = id,
-    eta = eta,
-    mu = mu,
-    u = u_obs
-  )
+y_cont <- rbeta(n = n, shape1 = a, shape2 = b)
+y <- ifelse(y_cont < 0.01, 0,
+            ifelse(y_cont > 0.99, 1, y_cont))
 
-  alpha_df <- data.frame(
-    id = 1:G,
-    alpha_true = as.numeric(alpha_vec)
-  )
+df <- data.frame(
+  y = y,
+  x1 = x1,
+  x2 = x2,
+  x3 = x3,
+  x4 = x4,
+  x1_x2 = x1_x2,
+  x1_x3 = x1_x3,
+  id = id,
+  eta = eta,
+  mu = mu,
+  u = u_obs
+)
 
-  list(
-    data = df,
-    alpha_true = alpha_df,
-    alpha_vec = alpha_vec
-  )
-}
+alpha_df <- data.frame(
+  id = 1:G,
+  alpha_true = as.numeric(alpha_vec)
+)
+
+list(
+  data = df,
+  alpha_true = alpha_df,
+  alpha_vec = alpha_vec
+)
+
 
 # ============================================================
 # Shared Laplace engine
