@@ -89,61 +89,47 @@ simulate_sltb_data <- function(n, G = max(5, round(n / 10)), seed = NULL,
   names(alpha_vec) <- 1:G
   u_obs <- alpha_vec[as.character(id)]
 
-x1 <- rnorm(n, mean = 0, sd = 1)
-x2 <- 0.5 * x1 + rnorm(n, mean = 0, sd = 1)
-x3 <- runif(n, -1, 1)
-x4 <- rnorm(n, mean = 2, sd = 0.5)
+  eta <- beta0 +
+    beta1 * x1 +
+    beta2 * x2 +
+    beta3 * x3 +
+    beta4 * x4 +
+    beta12 * x1_x2 +
+    beta13 * x1_x3 +
+    u_obs
 
-x1_x2 <- x1 * x2
-x1_x3 <- x1 * x3
+  mu <- plogis(eta)
+  a <- mu * phi
+  b <- (1 - mu) * phi
 
-id <- sample(1:G, size = n, replace = TRUE)
+  y_cont <- rbeta(n = n, shape1 = a, shape2 = b)
+  y <- ifelse(y_cont < 0.01, 0,
+              ifelse(y_cont > 0.99, 1, y_cont))
 
-alpha_vec <- rnorm(G, mean = 0, sd = tau_sd)
-names(alpha_vec) <- 1:G
-u_obs <- alpha_vec[as.character(id)]
+  df <- data.frame(
+    y = y,
+    x1 = x1,
+    x2 = x2,
+    x3 = x3,
+    x4 = x4,
+    x1_x2 = x1_x2,
+    x1_x3 = x1_x3,
+    id = id,
+    eta = eta,
+    mu = mu,
+    u = u_obs
+  )
 
-eta <- beta0 +
-  beta1 * x1 +
-  beta2 * x2 +
-  beta3 * x3 +
-  beta4 * x4 +
-  beta12 * x1_x2 +
-  beta13 * x1_x3 +
-  u_obs
+  alpha_df <- data.frame(
+    id = 1:G,
+    alpha_true = as.numeric(alpha_vec)
+  )
 
-mu <- plogis(eta)
-a <- mu * phi
-b <- (1 - mu) * phi
-
-y_cont <- rbeta(n = n, shape1 = a, shape2 = b)
-y <- ifelse(y_cont < 0.01, 0,
-            ifelse(y_cont > 0.99, 1, y_cont))
-
-df <- data.frame(
-  y = y,
-  x1 = x1,
-  x2 = x2,
-  x3 = x3,
-  x4 = x4,
-  x1_x2 = x1_x2,
-  x1_x3 = x1_x3,
-  id = id,
-  eta = eta,
-  mu = mu,
-  u = u_obs
-)
-
-alpha_df <- data.frame(
-  id = 1:G,
-  alpha_true = as.numeric(alpha_vec)
-)
-
-list(
-  data = df,
-  alpha_true = alpha_df,
-  alpha_vec = alpha_vec
-)
+  list(
+    data = df,
+    alpha_true = alpha_df,
+    alpha_vec = alpha_vec
+  )
 }
 
 # ============================================================
@@ -159,7 +145,7 @@ laplace_sltb_mixed_common_fast <- function(data,
                                            prec_formula = ~ 1,
                                            group_var = "id",
                                            y_var = "y",
-                                           tau_scale = 6,   # kept for compatibility; unused under ARM prior
+                                           tau_scale = 6,
                                            b = 1,
                                            beta_var = 1e6,
                                            gamma_var = 1e6,
