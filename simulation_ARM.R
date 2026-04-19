@@ -61,6 +61,8 @@ for (r in 1:R) {
       bf_logm <- setNames(rep(NA_real_, length(formula_list)), names(formula_list))
 
       for (nm in names(formula_list)) {
+        cat(sprintf("  Rep %03d: fitting model %s\n", r, nm))
+        
         fit <- do.call(
           laplace_sltb_mixed_common_fast,
           c(list(data = df, mean_formula = formula_list[[nm]], b = 1), shared_args)
@@ -185,3 +187,4 @@ write.csv(posterior_long_df, file.path(cond_dir, "posterior_long_condition.csv")
 saveRDS(mc_best_tables, file.path(cond_dir, "mc_best_tables_condition.rds"))
 
 cat("Done for n =", n, "tau =", tau_name, "\n")
+
