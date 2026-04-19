@@ -32,33 +32,34 @@ mc_best_tables <- list()
 
 for (r in 1:R) {
   sim_seed <- 100000 + 1000 * n + 100 * match(tau_name, c("small", "medium", "big")) + r
-  
+
   sim <- simulate_sltb_data(
     n = n,
     seed = sim_seed,
     tau_sd = tau_sd
   )
-  
+
   df <- sim$data
   df$id <- as.factor(df$id)
   df$x1_x2 <- df$x1 * df$x2
   df$x1_x3 <- df$x1 * df$x3
-  
+
   n_y0 <- sum(df$y == 0, na.rm = TRUE)
   n_y1 <- sum(df$y == 1, na.rm = TRUE)
   n_y01 <- n_y0 + n_y1
-  
+
   write.csv(df,
             file.path(cond_dir, sprintf("sim_n%d_%s_rep%03d.csv", n, tau_name, r)),
             row.names = FALSE)
+
   write.csv(sim$alpha_true,
             file.path(cond_dir, sprintf("alpha_n%d_%s_rep%03d.csv", n, tau_name, r)),
             row.names = FALSE)
-  
+
   res <- tryCatch(
     {
       bf_logm <- setNames(rep(NA_real_, length(formula_list)), names(formula_list))
-      
+
       for (nm in names(formula_list)) {
         fit <- do.call(
           laplace_sltb_mixed_common_fast,
@@ -66,15 +67,15 @@ for (r in 1:R) {
         )
         bf_logm[nm] <- fit$log_marginal
       }
-      
+
       bf_valid <- is.finite(bf_logm)
       if (!any(bf_valid)) stop("No valid BF fits produced.")
-      
+
       bf_best <- max(bf_logm[bf_valid])
       bf_post <- rep(NA_real_, length(bf_logm))
       bf_post[bf_valid] <- exp(bf_logm[bf_valid] - bf_best)
       bf_post[bf_valid] <- bf_post[bf_valid] / sum(bf_post[bf_valid])
-      
+
       bf_table <- data.frame(
         model = names(bf_logm),
         log_marginal = bf_logm,
@@ -82,10 +83,10 @@ for (r in 1:R) {
         stringsAsFactors = FALSE
       )
       bf_table <- bf_table[order(-bf_table$post_prob), ]
-      
+
       best_name <- bf_table$model[1]
       best_formula <- formula_list[[best_name]]
-      
+
       list(
         bf_table = bf_table,
         best_name = best_name,
@@ -106,21 +107,21 @@ for (r in 1:R) {
       )
     }
   )
-  
+
   if (!is.null(res$bf_table)) {
     write.csv(res$bf_table,
               file.path(cond_dir, sprintf("bf_table_n%d_%s_rep%03d.csv", n, tau_name, r)),
               row.names = FALSE)
   }
-  
+
   chosen_model <- ifelse(is.null(res$best_name), NA_character_, res$best_name)
   is_correct <- as.integer(!is.na(chosen_model) && chosen_model == true_model_name)
-  
+
   chosen_post_prob <- NA_real_
   if (!is.null(res$bf_table) && !is.na(chosen_model)) {
     chosen_post_prob <- res$bf_table$post_prob[match(chosen_model, res$bf_table$model)]
   }
-  
+
   mc_summary[[r]] <- data.frame(
     rep = r,
     n = n,
@@ -140,7 +141,7 @@ for (r in 1:R) {
     error = ifelse(is.null(res$error), NA_character_, res$error),
     stringsAsFactors = FALSE
   )
-  
+
   selection_list[[r]] <- data.frame(
     rep = r,
     n = n,
@@ -156,7 +157,7 @@ for (r in 1:R) {
     chosen_post_prob = chosen_post_prob,
     stringsAsFactors = FALSE
   )
-  
+
   if (!is.null(res$bf_table)) {
     tmp_post <- res$bf_table
     tmp_post$rep <- r
@@ -169,7 +170,7 @@ for (r in 1:R) {
     tmp_post$correct <- is_correct
     posterior_long_list[[r]] <- tmp_post
   }
-  
+
   mc_best_tables[[as.character(r)]] <- res$bf_table
 }
 
