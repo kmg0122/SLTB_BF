@@ -52,3 +52,14 @@ Starting task 1: n=500, tau=medium
   Rep 002: fitting model int23
   Rep 002: fitting model int24
   Rep 002: fitting model int34
+  Rep 002: fitting model int123_4
+  Rep 002: fitting model int124_3
+  Rep 002: fitting model int134_2
+  Rep 002: fitting model int234_1
+  Rep 002: fitting model full
+  Rep 003: fitting model null
+  Rep 003: fitting model x1
+  Rep 003: fitting model x2
+  Rep 003: fitting model x3
+  Rep 003: fitting model x4
+  Rep 003: fitting model main
