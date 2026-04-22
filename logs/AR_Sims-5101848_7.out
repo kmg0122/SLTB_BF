@@ -391,3 +391,18 @@ Starting task 7: n=500, tau=small
   Rep 014: fitting model int23_1
   Rep 014: fitting model int23_4
   Rep 014: fitting model int24_1
+  Rep 014: fitting model int24_3
+  Rep 014: fitting model int34_1
+  Rep 014: fitting model int34_2
+  Rep 014: fitting model int12
+  Rep 014: fitting model int13
+  Rep 014: fitting model int14
+  Rep 014: fitting model int23
+  Rep 014: fitting model int24
+  Rep 014: fitting model int34
+  Rep 014: fitting model int123_4
+  Rep 014: fitting model int124_3
+  Rep 014: fitting model int134_2
+  Rep 014: fitting model int234_1
+  Rep 014: fitting model full
+  Rep 015: fitting model null
