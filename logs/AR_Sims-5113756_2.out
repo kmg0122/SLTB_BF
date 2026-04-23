@@ -99,3 +99,34 @@ Starting task 2: n=500, tau=big
   Rep 004: fitting model int14_2
   Rep 004: fitting model int14_3
   Rep 004: fitting model int23_1
+  Rep 004: fitting model int23_4
+  Rep 004: fitting model int24_1
+  Rep 004: fitting model int24_3
+  Rep 004: fitting model int34_1
+  Rep 004: fitting model int34_2
+  Rep 004: fitting model int12
+  Rep 004: fitting model int13
+  Rep 004: fitting model int14
+  Rep 004: fitting model int23
+  Rep 004: fitting model int24
+  Rep 004: fitting model int34
+  Rep 004: fitting model int123_4
+  Rep 004: fitting model int124_3
+  Rep 004: fitting model int134_2
+  Rep 004: fitting model int234_1
+  Rep 004: fitting model full
+  Rep 005: fitting model null
+  Rep 005: fitting model x1
+  Rep 005: fitting model x2
+  Rep 005: fitting model x3
+  Rep 005: fitting model x4
+  Rep 005: fitting model main
+  Rep 005: fitting model int12_3
+  Rep 005: fitting model int12_4
+  Rep 005: fitting model int13_2
+  Rep 005: fitting model int13_4
+  Rep 005: fitting model int14_2
+  Rep 005: fitting model int14_3
+  Rep 005: fitting model int23_1
+  Rep 005: fitting model int23_4
+  Rep 005: fitting model int24_1
