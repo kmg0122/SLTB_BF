@@ -6,15 +6,16 @@ source("functions_sltb_IG.R")
 # Read arguments
 # ------------------------------------------------------------
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) < 3) {
+if (length(args) < 4) {
   stop("Usage: Rscript run_one_condition.R n tau_name tau_sd")
 }
 
 n <- as.integer(args[1])
 tau_name <- args[2]
 tau_sd <- as.numeric(args[3])
+start <- as.numeric(args[4])
 
-R <- 50
+R <- 19
 true_model_name <- "int12_3"
 
 base_dir <- file.path(getwd(), "mc_100rep_SLTB_IG")
@@ -30,7 +31,7 @@ selection_list <- list()
 posterior_long_list <- list()
 mc_best_tables <- list()
 
-for (r in 1:R) {
+for (r in start:R) {
   sim_seed <- 100000 + 1000 * n + 100 * match(tau_name, c("small", "medium", "big")) + r
   
   sim <- simulate_sltb_data(

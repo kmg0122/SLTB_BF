@@ -20,10 +20,12 @@ export OPENBLAS_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 case "${SLURM_ARRAY_TASK_ID}" in
-  1) n=500 tau_name="medium" tau_sd=0.4472136 ;;
-  2) n=500 tau_name="big"    tau_sd=0.7071068 ;;
+  1) n=500 tau_name="medium" tau_sd=0.4472136 start=11;;
+  2) n=500 tau_name="big"    tau_sd=0.7071068 start=13;;
 esac
 
-echo "Starting task ${SLURM_ARRAY_TASK_ID}: n=${n}, tau=${tau_name}"
-Rscript --vanilla simulation_ARM.R "${n}" "${tau_name}" "${tau_sd}"
+echo "Starting task ${SLURM_ARRAY_TASK_ID}: n=${n}, tau=${tau_name}, start=${start}"
+
+Rscript --vanilla simulation_HC.R "${n}" "${tau_name}" "${tau_sd}" "${start}"
+
 echo "Finished task ${SLURM_ARRAY_TASK_ID}"
