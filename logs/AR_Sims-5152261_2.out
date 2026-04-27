@@ -19,3 +19,25 @@ Starting task 2: n=500, tau=big
   Rep 020: fitting model int34_2
   Rep 020: fitting model int12
   Rep 020: fitting model int13
+  Rep 020: fitting model int14
+  Rep 020: fitting model int23
+  Rep 020: fitting model int24
+  Rep 020: fitting model int34
+  Rep 020: fitting model int123_4
+  Rep 020: fitting model int124_3
+  Rep 020: fitting model int134_2
+  Rep 020: fitting model int234_1
+  Rep 020: fitting model full
+  Rep 021: fitting model null
+  Rep 021: fitting model x1
+  Rep 021: fitting model x2
+  Rep 021: fitting model x3
+  Rep 021: fitting model x4
+  Rep 021: fitting model main
+  Rep 021: fitting model int12_3
+  Rep 021: fitting model int12_4
+  Rep 021: fitting model int13_2
+  Rep 021: fitting model int13_4
+  Rep 021: fitting model int14_2
+  Rep 021: fitting model int14_3
+  Rep 021: fitting model int23_1
