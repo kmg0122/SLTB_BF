@@ -60,3 +60,9 @@ Starting task 1: n=500, tau=medium
   Rep 022: fitting model null
   Rep 022: fitting model x1
   Rep 022: fitting model x2
+  Rep 022: fitting model x3
+  Rep 022: fitting model x4
+  Rep 022: fitting model main
+  Rep 022: fitting model int12_3
+  Rep 022: fitting model int12_4
+  Rep 022: fitting model int13_2
