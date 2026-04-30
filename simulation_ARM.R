@@ -6,7 +6,7 @@ source("functions_sltb_ARM.R")
 # Read arguments
 # ------------------------------------------------------------
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) < 4) {
+if (length(args) < 5) {
   stop("Usage: Rscript run_one_condition.R n tau_name tau_sd")
 }
 
@@ -14,9 +14,8 @@ n <- as.integer(args[1])
 tau_name <- args[2]
 tau_sd <- as.numeric(args[3])
 start<-as.numeric(args[4])
+R<-as.numeric(args[5])
 
-
-R <- 19
 true_model_name <- "int12_3"
 
 base_dir <- file.path(getwd(), "mc_100rep_SLTB_ARM")
