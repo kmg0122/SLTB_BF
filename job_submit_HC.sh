@@ -20,12 +20,12 @@ export OPENBLAS_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 case "${SLURM_ARRAY_TASK_ID}" in
-  1)  n=500 tau_name="big"    tau_sd=0.7071068 start=22 R=25 ;;
-  2) n=500 tau_name="big"    tau_sd=0.7071068 start=26 R=30 ;;
-  3) n=500 tau_name="big"    tau_sd=0.7071068 start=31 R=35 ;;
-  4)  n=500 tau_name="big"    tau_sd=0.7071068 start=36 R=40 ;;
-  5)  n=500 tau_name="big"    tau_sd=0.7071068 start=41 R=45 ;;
-  6)  n=500 tau_name="big"    tau_sd=0.7071068 start=46 R=50 ;;
+  1)  n=500 tau_name="medium" tau_sd=0.4472136 start=41 R=42 ;;
+  2)  n=500 tau_name="medium" tau_sd=0.4472136 start=43 R=44 ;;
+  3) n=500 tau_name="medium" tau_sd=0.4472136 start=43 R=44 ;;
+  4) n=500 tau_name="medium" tau_sd=0.4472136 start=45 R=46 ;;
+  5)  n=500 tau_name="medium" tau_sd=0.4472136 start=47 R=48 ;;;
+  6)  n=500 tau_name="medium" tau_sd=0.4472136 start=49 R=50 ;;
 
 esac
 
