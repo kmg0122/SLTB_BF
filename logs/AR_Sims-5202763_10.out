@@ -1,2 +1,6 @@
 Starting task 10: n=500, tau=big, start=36, R=37
   Rep 036: fitting model null
+  Rep 036: fitting model x1
+  Rep 036: fitting model x2
+  Rep 036: fitting model x3
+  Rep 036: fitting model x4

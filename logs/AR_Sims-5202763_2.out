@@ -1,3 +1,9 @@
 Starting task 2: n=500, tau=big, start=16, R=17
   Rep 016: fitting model null
   Rep 016: fitting model x1
+  Rep 016: fitting model x2
+  Rep 016: fitting model x3
+  Rep 016: fitting model x4
+  Rep 016: fitting model main
+  Rep 016: fitting model int12_3
+  Rep 016: fitting model int12_4

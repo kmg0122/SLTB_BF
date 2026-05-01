@@ -1,2 +1,9 @@
 Starting task 8: n=500, tau=big, start=31, R=32
   Rep 031: fitting model null
+  Rep 031: fitting model x1
+  Rep 031: fitting model x2
+  Rep 031: fitting model x3
+  Rep 031: fitting model x4
+  Rep 031: fitting model main
+  Rep 031: fitting model int12_3
+  Rep 031: fitting model int12_4

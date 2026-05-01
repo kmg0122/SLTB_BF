@@ -1,3 +1,10 @@
 Starting task 9: n=500, tau=big, start=33, R=35
   Rep 033: fitting model null
   Rep 033: fitting model x1
+  Rep 033: fitting model x2
+  Rep 033: fitting model x3
+  Rep 033: fitting model x4
+  Rep 033: fitting model main
+  Rep 033: fitting model int12_3
+  Rep 033: fitting model int12_4
+  Rep 033: fitting model int13_2

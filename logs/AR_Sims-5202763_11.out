@@ -1,3 +1,9 @@
 Starting task 11: n=500, tau=big, start=38, R=40
   Rep 038: fitting model null
   Rep 038: fitting model x1
+  Rep 038: fitting model x2
+  Rep 038: fitting model x3
+  Rep 038: fitting model x4
+  Rep 038: fitting model main
+  Rep 038: fitting model int12_3
+  Rep 038: fitting model int12_4

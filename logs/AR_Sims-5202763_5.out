@@ -1,3 +1,8 @@
 Starting task 5: n=500, tau=big, start=23, R=25
   Rep 023: fitting model null
   Rep 023: fitting model x1
+  Rep 023: fitting model x2
+  Rep 023: fitting model x3
+  Rep 023: fitting model x4
+  Rep 023: fitting model main
+  Rep 023: fitting model int12_3

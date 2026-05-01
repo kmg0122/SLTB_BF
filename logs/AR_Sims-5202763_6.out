@@ -1,2 +1,7 @@
 Starting task 6: n=500, tau=big, start=26, R=27
   Rep 026: fitting model null
+  Rep 026: fitting model x1
+  Rep 026: fitting model x2
+  Rep 026: fitting model x3
+  Rep 026: fitting model x4
+  Rep 026: fitting model main

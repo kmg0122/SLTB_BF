@@ -1,10 +1,7 @@
-Starting task 15: n=500, tau=big, start=49, R=50
+Starting task 5: n=500, tau=medium, start=49, R=50
   Rep 049: fitting model null
   Rep 049: fitting model x1
   Rep 049: fitting model x2
   Rep 049: fitting model x3
   Rep 049: fitting model x4
   Rep 049: fitting model main
-  Rep 049: fitting model int12_3
-  Rep 049: fitting model int12_4
-  Rep 049: fitting model int13_2
