@@ -5,3 +5,10 @@ Starting task 6: n=500, tau=big, start=26, R=27
   Rep 026: fitting model x3
   Rep 026: fitting model x4
   Rep 026: fitting model main
+  Rep 026: fitting model int12_3
+  Rep 026: fitting model int12_4
+  Rep 026: fitting model int13_2
+  Rep 026: fitting model int13_4
+  Rep 026: fitting model int14_2
+  Rep 026: fitting model int14_3
+  Rep 026: fitting model int23_1

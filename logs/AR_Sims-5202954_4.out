@@ -5,3 +5,8 @@ Starting task 4: n=500, tau=medium, start=47, R=48
   Rep 047: fitting model x3
   Rep 047: fitting model x4
   Rep 047: fitting model main
+  Rep 047: fitting model int12_3
+  Rep 047: fitting model int12_4
+  Rep 047: fitting model int13_2
+  Rep 047: fitting model int13_4
+  Rep 047: fitting model int14_2

@@ -4,3 +4,7 @@ Starting task 10: n=500, tau=big, start=36, R=37
   Rep 036: fitting model x2
   Rep 036: fitting model x3
   Rep 036: fitting model x4
+  Rep 036: fitting model main
+  Rep 036: fitting model int12_3
+  Rep 036: fitting model int12_4
+  Rep 036: fitting model int13_2
