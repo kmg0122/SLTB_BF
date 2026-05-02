@@ -55,3 +55,7 @@ Starting task 2: n=500, tau=medium, start=13, R=14
   Rep 014: fitting model int123_4
   Rep 014: fitting model int124_3
   Rep 014: fitting model int134_2
+  Rep 014: fitting model int234_1
+  Rep 014: fitting model full
+Done for n = 500 tau = medium 
+Finished task 2

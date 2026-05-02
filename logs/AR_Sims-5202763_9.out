@@ -79,3 +79,12 @@ Starting task 9: n=500, tau=big, start=33, R=35
   Rep 035: fitting model int13
   Rep 035: fitting model int14
   Rep 035: fitting model int23
+  Rep 035: fitting model int24
+  Rep 035: fitting model int34
+  Rep 035: fitting model int123_4
+  Rep 035: fitting model int124_3
+  Rep 035: fitting model int134_2
+  Rep 035: fitting model int234_1
+  Rep 035: fitting model full
+Done for n = 500 tau = big 
+Finished task 9
