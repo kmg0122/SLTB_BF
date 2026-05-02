@@ -15,3 +15,47 @@ Starting task 14: n=500, tau=big, start=47, R=48
   Rep 047: fitting model int23_4
   Rep 047: fitting model int24_1
   Rep 047: fitting model int24_3
+  Rep 047: fitting model int34_1
+  Rep 047: fitting model int34_2
+  Rep 047: fitting model int12
+  Rep 047: fitting model int13
+  Rep 047: fitting model int14
+  Rep 047: fitting model int23
+  Rep 047: fitting model int24
+  Rep 047: fitting model int34
+  Rep 047: fitting model int123_4
+  Rep 047: fitting model int124_3
+  Rep 047: fitting model int134_2
+  Rep 047: fitting model int234_1
+  Rep 047: fitting model full
+  Rep 048: fitting model null
+  Rep 048: fitting model x1
+  Rep 048: fitting model x2
+  Rep 048: fitting model x3
+  Rep 048: fitting model x4
+  Rep 048: fitting model main
+  Rep 048: fitting model int12_3
+  Rep 048: fitting model int12_4
+  Rep 048: fitting model int13_2
+  Rep 048: fitting model int13_4
+  Rep 048: fitting model int14_2
+  Rep 048: fitting model int14_3
+  Rep 048: fitting model int23_1
+  Rep 048: fitting model int23_4
+  Rep 048: fitting model int24_1
+  Rep 048: fitting model int24_3
+  Rep 048: fitting model int34_1
+  Rep 048: fitting model int34_2
+  Rep 048: fitting model int12
+  Rep 048: fitting model int13
+  Rep 048: fitting model int14
+  Rep 048: fitting model int23
+  Rep 048: fitting model int24
+  Rep 048: fitting model int34
+  Rep 048: fitting model int123_4
+  Rep 048: fitting model int124_3
+  Rep 048: fitting model int134_2
+  Rep 048: fitting model int234_1
+  Rep 048: fitting model full
+Done for n = 500 tau = big 
+Finished task 14

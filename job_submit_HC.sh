@@ -6,7 +6,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
-#SBATCH --array=1-5
+#SBATCH --array=1
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=kmg0122@vt.edu
 #SBATCH -o logs/%x-%A_%a.out
@@ -20,12 +20,7 @@ export OPENBLAS_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 case "${SLURM_ARRAY_TASK_ID}" in
-  1)  n=500 tau_name="medium" tau_sd=0.4472136 start=41 R=42 ;;
-  2)  n=500 tau_name="medium" tau_sd=0.4472136 start=43 R=44 ;;
-  3) n=500 tau_name="medium" tau_sd=0.4472136 start=45 R=46 ;;
-  4) n=500 tau_name="medium" tau_sd=0.4472136 start=47 R=48 ;;
-  5)  n=500 tau_name="medium" tau_sd=0.4472136 start=49 R=50 ;;
- 
+  1)  n=500 tau_name="medium" tau_sd=0.4472136 start=45 R=45 ;;
 
 esac
 

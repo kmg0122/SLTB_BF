@@ -1,0 +1,3 @@
+"rep","n","tau_label","tau_sd","tau_var","seed","n_y0","n_y1","n_y01","best_model","best_formula","log_marginal","tau_map","correct","chosen_post_prob","error"
+43,500,"medium",0.4472136,0.20000000402496,600243,6,1,7,"int12_3","~x1 * x2 + x3",340.040327430588,NA,1,0.995450688848149,NA
+44,500,"medium",0.4472136,0.20000000402496,600244,9,1,10,"int12_3","~x1 * x2 + x3",410.578511077108,NA,1,0.999923946121434,NA
