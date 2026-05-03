@@ -20,7 +20,7 @@ export OPENBLAS_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 case "${SLURM_ARRAY_TASK_ID}" in
-  1)  n=500 tau_name="medium" tau_sd=0.4472136 start=45 R=45 ;;
+  1)  n=500 tau_name="medium" tau_sd=0.4472136 start=40 R=40 ;;
 
 esac
 
