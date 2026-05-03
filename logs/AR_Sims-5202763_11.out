@@ -85,3 +85,6 @@ Starting task 11: n=500, tau=big, start=38, R=40
   Rep 040: fitting model int124_3
   Rep 040: fitting model int134_2
   Rep 040: fitting model int234_1
+  Rep 040: fitting model full
+Done for n = 500 tau = big 
+Finished task 11
